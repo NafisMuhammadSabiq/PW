@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -22,11 +22,27 @@
       <p><strong>Sismadi Langit Solusi</strong> — Universitas IPWIJA</p>
     </div>
 
-    <div class="action-buttons">
-      <button id="loginBtn">Login untuk akses data</button>
+    <!-- Login Form -->
+    <div class="login-box" id="loginBox">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <label>Username:
+          <input type="text" id="username" required>
+        </label><br>
+        <label>Password:
+          <input type="password" id="password" required>
+        </label><br>
+        <button type="submit">Login</button>
+      </form>
+    </div>
+
+    <!-- Welcome & Logout -->
+    <div class="login-box" id="welcomeBox" style="display: none;">
+      <h2 id="welcome">Halo, User!</h2>
       <button id="logoutBtn">Logout</button>
     </div>
 
+    <!-- Konten dari Supabase -->
     <div id="content"></div>
 
     <div class="content-card">
@@ -47,49 +63,58 @@
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
     const content = document.getElementById('content')
 
-    // Login (ganti email dan password sesuai akun)
-    async function login() {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'user@example.com',  // ← ganti dengan email Anda
-        password: 'password123'     // ← ganti dengan password Anda
-      })
+    // Hardcoded user
+    const users = {
+      admin: '12345',
+      user: 'pass'
+    }
 
-      if (error) {
-        alert('Login gagal: ' + error.message)
-        return
+    // Cek login
+    function checkLogin() {
+      const session = localStorage.getItem('sessionUser')
+      if (session) {
+        document.getElementById('loginBox').style.display = 'none'
+        document.getElementById('welcomeBox').style.display = 'block'
+        document.getElementById('welcome').innerText = `Halo, ${session}!`
+        loadData()  // Load Supabase data saat sudah login
       }
-
-      loadData()
     }
 
-    // Logout
-    async function logout() {
-      await supabase.auth.signOut()
-      content.innerHTML = '<p>Logout berhasil.</p>'
-    }
+    // Handle login form
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault()
+      const uname = document.getElementById('username').value.trim()
+      const pass = document.getElementById('password').value.trim()
 
-    // Ambil dan tampilkan data dari tabel 'web3' jika user login
+      if (users[uname] && users[uname] === pass) {
+        localStorage.setItem('sessionUser', uname)
+        checkLogin()
+      } else {
+        alert('Username atau password salah!')
+      }
+    })
+
+    // Logout button
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('sessionUser')
+      location.reload()
+    })
+
+    // Load data Supabase
     async function loadData() {
-      const { data: { user } } = await supabase.auth.getUser()
-
-      if (!user) {
-        content.innerHTML = '<p>Silakan login untuk melihat data.</p>'
-        return
-      }
-
       const { data, error } = await supabase
         .from('web3')
         .select('*')
         .order('id')
 
       if (error) {
-        alert('Gagal memuat data: ' + error.message)
+        content.innerHTML = '<p style="color:red">Gagal memuat data Supabase: ' + error.message + '</p>'
         return
       }
 
-      let out = ''
+      let html = ''
       data.forEach(row => {
-        out += `
+        html += `
           <div class="content-card">
             <h2>${row.judul}</h2>
             <p>${row.isi}</p>
@@ -97,18 +122,11 @@
         `
       })
 
-      content.innerHTML = out
+      content.innerHTML = html
     }
 
-    // Tambahkan event listener
-    document.getElementById('loginBtn').addEventListener('click', login)
-    document.getElementById('logoutBtn').addEventListener('click', logout)
-
-    // Cek status login saat halaman dimuat
-    window.addEventListener('DOMContentLoaded', async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) loadData()
-    })
+    // Jalankan saat halaman dimuat
+    window.addEventListener('DOMContentLoaded', checkLogin)
   </script>
 
 </body>
